@@ -8,12 +8,34 @@ import xlwt
 import sys
 
 
-SVOD_VAGON_N_COL = 5
-SVOD_IN_DATE_COL = 8
-UTIL_VAGON_N_COL = 8
-UTIL_IN_DATE_COL = 4
-UTIL_TYPE_COL = 19
+"""Константы"""
+UTIL_COLS = {
+	'VAGON_NUMBER': 8,
+	'IN_DATE': 4,
+	'TYPE': 19,
+	'PART_NUMBER': 16,
+	'GRADATION': 20,
+	'NAME_MC': 7,
+	'SCEP': 1
+}
 
+SVOD_COLS = {
+	'VAGON_NUMBER': 5,
+	'IN_DATE': 8,
+	'PART_NUMBER': 10,
+	'TYPE': 9,
+	'WIDTH': 14,
+	'COMMENT': 28,
+	"GRADATION": 29,
+	'SCEP': 30
+}
+
+PART_TYPE = {
+	'КП': 'Колесная пара',
+	'БР': 'Боковая рама',
+	'НБ': 'Надрессорная балка',
+
+}
 
 
 def main():
@@ -44,6 +66,5 @@ def analyse_files():
 	print("Загрузите утилиту")
 	util = get_excel_file()
 
-	print 
 
 main()

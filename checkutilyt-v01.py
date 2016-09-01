@@ -66,20 +66,35 @@ def compare_row(util_row, svod_row, svod):
 
 	result = False
 
-	"""Сравниваем номер вагона"""
+	"""(1) Сравниваем номер вагона"""
 	if util_row[UTIL_DATA['VAGON_NUMBER']].value == \
 		svod_row[SVOD_DATA['VAGON_NUMBER']].value:
 
-		"""Номер вагона совпал, подготавливаем даты и сравниваем (СВОД-3 <= УТИЛИТА <= СВОД+3"""
+		"""(2) Номер вагона совпал, подготавливаем даты и сравниваем (СВОД-3 <= УТИЛИТА <= СВОД+3"""
 		util_date = text_to_date(util_row[UTIL_DATA["IN_DATE"]].value)
 		svod_date = xl_to_date(svod_row[SVOD_DATA["IN_DATE"]].value,svod)
 		margin = datetime.timedelta(days = DATE_FRAME)
 
 		if svod_date - margin <= util_date <= svod_date + margin:
-
-			"""Дата утилиты входит в период свода (-3,+3)
+			"""(3) Дата утилиты входит в период свода (-3,+3)
 				Проверяем есть ли номер детали в утилите
 			"""
+
+			if util_row[UTIL_DATA["PART_NUMBER"]].value:
+				"""(4) У утилиты есть номер детали
+					Сравниваем номера деталей в утилите и своде					
+				"""
+
+				if util_row[UTIL_DATA["PART_NUMBER"]].value == svod_row[SVOD_DATA["PART_NUMBER"]].value:
+					"""Номер детали совпал - записи совпали"""
+					result = True
+
+			elif PART_TYPE[util_row[UTIL_DATA["TYPE"]].value] == svod_row[SVOD_DATA["TYPE"]].value:
+				"""(5) У утилиты нет номера детали. Сравниваем тип детали"""
+				
+				if util_row[UTIL_DATA["TYPE"]].value == "КП":
+					"""(6) Тип детали совподает. Проверяем, является ли деталь КП"""
+					"""Деталь является КП, сравниваем градацию"""
 
 
 	return result
@@ -124,9 +139,10 @@ def analyse_files():
 #	svod_result.save("%sresult.xls"%(result_path))
 #	print("Результат сохранен в %s"%(result_path))
 
-	res = compare_row(util_sheet.row(UTIL_ROW_START), \
-			svod_sheet.row(SVOD_ROW_START), svod)
-
-	print(res)
+	""" ТЕСТЫ при разработке """
+#	res = compare_row(util_sheet.row(UTIL_ROW_START), \
+#			svod_sheet.row(SVOD_ROW_START), svod)
+#
+#	print(res)
 
 main()

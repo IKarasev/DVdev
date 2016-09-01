@@ -44,4 +44,6 @@ def analyse_files():
 	print("Загрузите утилиту")
 	util = get_excel_file()
 
+	print 
+
 main()

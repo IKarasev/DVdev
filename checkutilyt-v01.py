@@ -14,7 +14,7 @@ UTIL_DATA = {
 	'VAGON_NUMBER': 7,
 	'IN_DATE': 3,
 	'TYPE': 18,
-	'PART_NUMBER': 17,
+	'PART_NUMBER': 15,
 	'GRADATION': 19,
 	'NAME_MC': 6,
 	'SCEP': 0,
@@ -28,8 +28,8 @@ SVOD_DATA = {
 	'PART_NUMBER': 9,
 	'TYPE': 8,
 	'WIDTH': 13,
-	'COMMENT': 27,
-	"GRADATION": 28,
+	'COMMENT': 26,
+	"GRADATION": 13,
 	'SCEP': 29
 }
 
@@ -60,41 +60,75 @@ def get_excel_file():
 	return wb
 
 
+def get_util_gradation(util_row):
+	grad = util_row[UTIL_DATA["GRADATION"]].value.split("-")
+	grad[0] = int(grad[0])
+	grad[1] = int(grad[1])
+	return grad
+
+
 def compare_row(util_row, svod_row, svod):
 	"""Производит сравнение строк и возвращает True если критерии
 	удволетворены и False если нет"""
 
 	result = False
 
+#	print("--->(0) Сравнение началось")
+
 	"""(1) Сравниваем номер вагона"""
-	if util_row[UTIL_DATA['VAGON_NUMBER']].value == \
-		svod_row[SVOD_DATA['VAGON_NUMBER']].value:
+	if util_row[UTIL_DATA['VAGON_NUMBER']].value == svod_row[SVOD_DATA['VAGON_NUMBER']].value:
+
+#		print("--->(1) Номер вагона совпал")
 
 		"""(2) Номер вагона совпал, подготавливаем даты и сравниваем (СВОД-3 <= УТИЛИТА <= СВОД+3"""
 		util_date = text_to_date(util_row[UTIL_DATA["IN_DATE"]].value)
 		svod_date = xl_to_date(svod_row[SVOD_DATA["IN_DATE"]].value,svod)
 		margin = datetime.timedelta(days = DATE_FRAME)
 
-		if svod_date - margin <= util_date <= svod_date + margin:
-			"""(3) Дата утилиты входит в период свода (-3,+3)
+		if (svod_date - margin).date() < util_date.date() < (svod_date + margin).date():
+			"""(2) Дата утилиты входит в период свода (-3,+3)
 				Проверяем есть ли номер детали в утилите
 			"""
 
-			if util_row[UTIL_DATA["PART_NUMBER"]].value:
-				"""(4) У утилиты есть номер детали
-					Сравниваем номера деталей в утилите и своде					
-				"""
+#			print("--->(2) Даты совпали")
 
-				if util_row[UTIL_DATA["PART_NUMBER"]].value == svod_row[SVOD_DATA["PART_NUMBER"]].value:
+			if util_row[UTIL_DATA["PART_NUMBER"]].value:
+				"""(3) У утилиты есть номер детали"""
+
+#				print("--->(3) Номер детали есть")
+
+				"""(4) Сравниваем номера деталей в утилите и своде"""
+				if int(util_row[UTIL_DATA["PART_NUMBER"]].value) == int(svod_row[SVOD_DATA["PART_NUMBER"]].value):
 					"""Номер детали совпал - записи совпали"""
+					
+#					print("--->(4) Номер детали совпадает")
+					
 					result = True
+
 
 			elif PART_TYPE[util_row[UTIL_DATA["TYPE"]].value] == svod_row[SVOD_DATA["TYPE"]].value:
 				"""(5) У утилиты нет номера детали. Сравниваем тип детали"""
-				
+#				print("--->(5) Тип детали совпал")
+
 				if util_row[UTIL_DATA["TYPE"]].value == "КП":
 					"""(6) Тип детали совподает. Проверяем, является ли деталь КП"""
-					"""Деталь является КП, сравниваем градацию"""
+#					print("--->(6) Деталь является КП")
+
+					util_gradation = get_util_gradation(util_row)
+
+					"""(7)Деталь является КП, сравниваем градацию"""
+					if util_gradation[1] <= int(svod_row[SVOD_DATA["GRADATION"]].value) <= util_gradation[0]:
+						"""Если градация свода входит в градацию утилиты, то записываем результат"""
+						result = True
+#						print("--->(7) Градация совподает")
+
+					"""(8) Деталь не является КП, но тип детали сходится, проверяем, было ли схождение раньше"""
+				elif not svod_row[SVOD_DATA["COMMENT"]].value:
+					"""Ранних схождений не найденно - записываем текущее схождение"""
+					result = True
+
+#					print("--->(7) НЕ КП")
+#					print("--->(8) Записи нет")
 
 
 	return result
@@ -124,25 +158,32 @@ def analyse_files():
 	print("Загрузите утилиту")
 	util = get_excel_file()
 
-	print("Зоздается таблица результатов")
-#	svod_result = copy(svod)
+	print("Cоздается таблица результатов")
+	svod_result = copy(svod)
 
-#	print("Введите путь для сохранения результата")
-#	result_path = input(">:")
+	print("Введите путь для сохранения результата")
+	result_path = input(">:")
 
-	"""Получаем первые листа свода и утилиты"""
+	"""Получаем первые листы свода и утилиты"""
 	util_sheet = util.sheet_by_index(0)
 	svod_sheet = svod.sheet_by_index(0)
-#	svod_result_sheet = svod_result.get_sheet(0)
+	svod_result_sheet = svod_result.get_sheet(0)
+
+	"""Проводим проверку по всем строкам"""
+	for util_row_num in range(UTIL_ROW_START, util_sheet.nrows):
+		for svod_row_num in range(SVOD_ROW_START, svod_sheet.nrows):
+			"""Проверка если запись совполает"""
+			comp_result = compare_row(util_sheet.row(util_row_num), svod_sheet.row(svod_row_num), svod)
+
+			print(str(util_row_num) + ":  " + str(comp_result))
+			
 
 	"""Сохраняем результат"""
-#	svod_result.save("%sresult.xls"%(result_path))
-#	print("Результат сохранен в %s"%(result_path))
+	svod_result.save("%sresult.xls"%(result_path))
+	print("Результат сохранен в %s"%(result_path))
 
 	""" ТЕСТЫ при разработке """
 #	res = compare_row(util_sheet.row(UTIL_ROW_START), \
 #			svod_sheet.row(SVOD_ROW_START), svod)
-#
-#	print(res)
 
 main()

@@ -30,7 +30,8 @@ SVOD_DATA = {
 	'WIDTH': 13,
 	'COMMENT': 26,
 	"GRADATION": 13,
-	'SCEP': 29
+	'SCEP': 27,
+	'UTIL_ROW':28
 }
 
 SVOD_ROW_START = 3
@@ -123,6 +124,7 @@ def compare_row(util_row, svod_row, svod):
 #						print("--->(7) Градация совподает")
 
 					"""(8) Деталь не является КП, но тип детали сходится, проверяем, было ли схождение раньше"""
+
 				elif not svod_row[SVOD_DATA["COMMENT"]].value:
 					"""Ранних схождений не найденно - записываем текущее схождение"""
 					result = True
@@ -171,15 +173,23 @@ def analyse_files():
 
 	"""Проводим проверку по всем строкам"""
 	for util_row_num in range(UTIL_ROW_START, util_sheet.nrows):
+		print("Строка утилиты: %s"%(util_row_num+1))
+
 		for svod_row_num in range(SVOD_ROW_START, svod_sheet.nrows):
 			"""Проверка если запись совполает"""
 			comp_result = compare_row(util_sheet.row(util_row_num), svod_sheet.row(svod_row_num), svod)
 
-			print(str(util_row_num) + ":  " + str(comp_result))
-			
+			"""Если схождение - записываем результат в итоговую таблицу"""
+			if comp_result:
+				"""Записываем наименование МЦ"""
+				svod_result_sheet.write(svod_row_num, SVOD_DATA["COMMENT"], util_sheet.cell(util_row_num,UTIL_DATA["NAME_MC"]).value)
+				"""Записываем сцеп"""
+				svod_result_sheet.write(svod_row_num, SVOD_DATA["SCEP"], util_sheet.cell(util_row_num,UTIL_DATA["SCEP"]).value)
+				"""Записываем соотвествующую строку утилиты"""
+				svod_result_sheet.write(svod_row_num, SVOD_DATA["UTIL_ROW"], str(util_row_num))
 
 	"""Сохраняем результат"""
-	svod_result.save("%sresult.xls"%(result_path))
+	svod_result.save("%s\\result.xls"%(result_path))
 	print("Результат сохранен в %s"%(result_path))
 
 	""" ТЕСТЫ при разработке """

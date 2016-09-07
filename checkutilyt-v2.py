@@ -28,10 +28,10 @@ SVOD_DATA = {
 	'PART_NUMBER': 9,
 	'TYPE': 8,
 	'WIDTH': 13,
-	'COMMENT': 26,
+	'COMMENT': 25,
 	"GRADATION": 13,
-	'SCEP': 27,
-	'UTIL_ROW':28
+	'SCEP': 26,
+	'UTIL_ROW':27
 }
 
 SVOD_ROW_START = 3
@@ -183,9 +183,8 @@ def analyse_files():
 
 		if comp_result:
 			"""Если схождение - записываем результат в итоговую таблицу"""
-			print("util cache :   "+str(util_cache))
 			write_row_number = check_util_cashe(util_cache)
-			print(write_row_number)
+
 			"""Записываем наименование МЦ"""
 			svod_result_sheet.write(write_row_number, SVOD_DATA["COMMENT"], util_sheet.cell(util_row_num,UTIL_DATA["NAME_MC"]).value)
 			"""Записываем сцеп"""

@@ -6,6 +6,8 @@ By Karasev I.A.
 import xlrd
 import xlwt
 import datetime
+import getopt
+import sys
 from xlutils.copy import copy
 
 
@@ -47,11 +49,46 @@ DATE_FRAME = 3
 
 SAVE_RANGE = 500
 
+UTIL_FILE = ""
+SVOD_FILE = ""
 
-def main():
+
+
+def main(argv):
 	"""Функция выполняемая при запуске скрипта"""
-	print("Сравнение открыто")
-	analyse_files()
+
+	"""Обработка аргументов"""
+	try:
+		opts, args = getopt.getopt(argv,"hd:s:с:",["DATE_FRAME=","SAVE_RANGE=;","SVOD_COMMENT="])
+	except getopt.GetoptError:
+		print("ERROR: wrong arguments")
+		sys.exit(2)
+
+	global SAVE_RANGE
+	global DATE_FRAME
+	global SVOD_DATA
+
+	try:
+		for opt, arg in opts:
+			if opt == '-h':
+				print('-d [--DATE_FRAME] <num>  - Опрределяет рамки времени от даты свода в днях, в который должна попасть дата утилиты')
+				print('-s [--SAVE_RANGE] <num>  - число, период строк утилыты, через который будет производится сохранение результатов')
+			elif opt in("-d","--DATE_FRAME"):
+				DATE_FRAME = int(arg)
+			elif opt in ("-s","--SAVE_RANGE"):
+				SAVE_RANGE = int(arg)
+			elif opt in ("-c","SVOD_COMMENT="):
+				SVOD_DATA["COMMENT"] = int(arg)
+	except Exception:
+		print("ERROR: wrong arguments to parse")
+		sys.exit(2)
+
+	print('SAVE RANGE: %s rows  |  DATE FRAME: %s days'%(SAVE_RANGE, DATE_FRAME))
+	print('SVOD COMMENT COLUMN: %s'%(SVOD_DATA["COMMENT"]))
+
+	"""Начало обработки"""
+#	print("Сравнение открыто")
+#	analyse_files()
 
 
 def get_excel_file():
@@ -101,9 +138,9 @@ def compare_row(util_row, svod_row, svod_row_num, svod, util_cache):
 #						print("-->(5) Номер совпал")
 
 						"""Номер детали совпал - записываем данные строку свода
-						и наличие номер детали в util_cache"""
+						и наличие номер детали в util_cache. Сразу возвращаем данные на запись"""
 						util_cache.append({"svod_row_num": svod_row_num, "type": 1})
-						result = True
+						return True
 
 				elif PART_TYPE[util_row[UTIL_DATA["TYPE"]].value] == svod_row[SVOD_DATA["TYPE"]].value:
 					"""(6) У утилиты нет номера детали. Сравниваем тип детали"""
@@ -229,4 +266,5 @@ def analyse_files():
 #			svod_sheet.row(SVOD_ROW_START), svod)
 
 
-main()
+if __name__ == "__main__":
+	main(sys.argv[1:])

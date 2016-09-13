@@ -59,7 +59,7 @@ def main(argv):
 
 	"""Обработка аргументов"""
 	try:
-		opts, args = getopt.getopt(argv,"hd:s:с:",["DATE_FRAME=","SAVE_RANGE=;","SVOD_COMMENT="])
+		opts, args = getopt.getopt(argv,"hd:s:c:",["DATE_FRAME=","SAVE_RANGE=","SVOD_COMMENT="])
 	except getopt.GetoptError:
 		print("ERROR: wrong arguments")
 		sys.exit(2)
@@ -71,14 +71,15 @@ def main(argv):
 	try:
 		for opt, arg in opts:
 			if opt == '-h':
-				print('-d [--DATE_FRAME] <num>  - Опрределяет рамки времени от даты свода в днях, в который должна попасть дата утилиты')
+				print('-d [--DATE_FRAME] <num>  - опрределяет рамки времени от даты свода в днях, в который должна попасть дата утилиты')
 				print('-s [--SAVE_RANGE] <num>  - число, период строк утилыты, через который будет производится сохранение результатов')
+				print('-c [--SVOD_COMMENT] <num> - номер столбца таблицы свода ')
 			elif opt in("-d","--DATE_FRAME"):
 				DATE_FRAME = int(arg)
 			elif opt in ("-s","--SAVE_RANGE"):
 				SAVE_RANGE = int(arg)
 			elif opt in ("-c","SVOD_COMMENT="):
-				SVOD_DATA["COMMENT"] = int(arg)
+				SVOD_DATA["COMMENT"] = int(arg) - 1
 	except Exception:
 		print("ERROR: wrong arguments to parse")
 		sys.exit(2)
@@ -87,8 +88,8 @@ def main(argv):
 	print('SVOD COMMENT COLUMN: %s'%(SVOD_DATA["COMMENT"]))
 
 	"""Начало обработки"""
-#	print("Сравнение открыто")
-#	analyse_files()
+	print("Сравнение открыто")
+	analyse_files()
 
 
 def get_excel_file():

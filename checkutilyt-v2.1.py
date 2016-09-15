@@ -25,13 +25,13 @@ UTIL_DATA = {
 UTIL_ROW_START = 2
 
 SVOD_DATA = {
-	'VAGON_NUMBER': 4,
-	'IN_DATE': 7,
-	'PART_NUMBER': 9,
-	'TYPE': 8,
-	'WIDTH': 13,
+	'VAGON_NUMBER': 3,
+	'IN_DATE': 6,
+	'PART_NUMBER': 8,
+	'TYPE': 7,
+	'WIDTH': 12,
 	'COMMENT': 25,
-	"GRADATION": 13,
+	"GRADATION": 12,
 	'SCEP': 26,
 	'UTIL_ROW':27
 }
@@ -74,6 +74,7 @@ def main(argv):
 				print('-d [--DATE_FRAME] <num>  - опрределяет рамки времени от даты свода в днях, в который должна попасть дата утилиты')
 				print('-s [--SAVE_RANGE] <num>  - число, период строк утилыты, через который будет производится сохранение результатов')
 				print('-c [--SVOD_COMMENT] <num> - номер столбца таблицы свода ')
+				sys.exit(2)
 			elif opt in("-d","--DATE_FRAME"):
 				DATE_FRAME = int(arg)
 			elif opt in ("-s","--SAVE_RANGE"):
@@ -81,7 +82,7 @@ def main(argv):
 			elif opt in ("-c","SVOD_COMMENT="):
 				SVOD_DATA["COMMENT"] = int(arg) - 1
 	except Exception:
-		print("ERROR: wrong arguments to parse")
+		print("ERROR: arguments couldn't be parsed")
 		sys.exit(2)
 
 	print('SAVE RANGE: %s rows  |  DATE FRAME: %s days'%(SAVE_RANGE, DATE_FRAME))
@@ -121,7 +122,7 @@ def compare_row(util_row, svod_row, svod_row_num, svod, util_cache):
 		if util_row[UTIL_DATA['VAGON_NUMBER']].value == svod_row[SVOD_DATA['VAGON_NUMBER']].value:
 			"""(2) Записи нет - проверяем номер вагона"""
 #			print("-->(2) Номер вагона совпал")
-			
+		
 			util_date = text_to_date(util_row[UTIL_DATA["IN_DATE"]].value)
 			svod_date = xl_to_date(svod_row[SVOD_DATA["IN_DATE"]].value,svod)
 			margin = datetime.timedelta(days = DATE_FRAME)
@@ -221,37 +222,40 @@ def analyse_files():
 	util_rows = util_sheet.nrows
 	svod_rows = svod_sheet.nrows
 
-	print("Строк в утилите: %s"%(util_rows - UTIL_ROW_START))
-	print("Строк в своде:   %s"%(svod_rows - SVOD_ROW_START))
+	print("Записей в утилите: %s"%(util_rows - UTIL_ROW_START))
+	print("Записей в своде:   %s"%(svod_rows - SVOD_ROW_START))
+
+	util_cache = []
 
 	"""Проводим проверку по всем строкам"""
 	for util_row_num in range(UTIL_ROW_START, util_rows):
 		print("Строка утилиты: %s"%(util_row_num+1), end=" --> ")
-		util_cache = []
+		del util_cache[:]
 		comp_result = False
 
 		for svod_row_num in range(SVOD_ROW_START, svod_rows):
 			try:
 				"""Проверка если запись совполает"""
 				comp_row_result = compare_row(util_sheet.row(util_row_num), svod_sheet.row(svod_row_num), svod_row_num, svod, util_cache)
+				
 				if comp_row_result:
 					comp_result = True
 			except Exception:
-				print("warnign: util-%s  svod-%s"%(util_row_num+1, svod_row_num+1))
+				print("warnign: util-%s  svod-%s"%(util_row_num+1, svod_row_num))
 
 		print(str(comp_result))
 
 		if comp_result:
 			"""Если схождение - записываем результат в итоговую таблицу"""
 			write_row_number = check_util_cashe(util_cache)
-#			print("-->row_write: "+str(write_row_number))
+			print("-->row_write: "+str(write_row_number))
 
 			"""Записываем наименование МЦ"""
 			svod_result_sheet.write(write_row_number, SVOD_DATA["COMMENT"], util_sheet.cell(util_row_num,UTIL_DATA["NAME_MC"]).value)
 			"""Записываем сцеп"""
 			svod_result_sheet.write(write_row_number, SVOD_DATA["SCEP"], util_sheet.cell(util_row_num,UTIL_DATA["SCEP"]).value)
 			"""Записываем соотвествующую строку утилиты"""
-			svod_result_sheet.write(write_row_number, SVOD_DATA["UTIL_ROW"], str(util_row_num))
+			svod_result_sheet.write(write_row_number, SVOD_DATA["UTIL_ROW"], str(util_row_num+1))
 
 		if not util_row_num%SAVE_RANGE:
 			"""Сохраняем каждые SAVE_RANGE строк"""

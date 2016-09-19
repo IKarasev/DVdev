@@ -93,6 +93,7 @@ def main(argv):
 	analyse_files()
 
 
+"""Function to load an excel file"""
 def get_excel_file():
 	"""Запрашивает путь к файлу excel и возвращает книгу в виде xlrd"""
 	filepath = input("Введите путь к файлу: ")
@@ -101,7 +102,7 @@ def get_excel_file():
 	print("Файл %s загружен"%(filepath))
 	return wb
 
-
+"""Function to get gradation of the part from util"""
 def get_util_gradation(util_row):
 	grad = util_row[UTIL_DATA["GRADATION"]].value.split("-")
 	grad[0] = int(grad[0])
@@ -109,13 +110,13 @@ def get_util_gradation(util_row):
 	return grad
 
 
-def compare_row(util_row, svod_row, svod_row_num, svod, util_cache):
+def compare_row(util_row, svod_row, svod_row_num, svod, util_cache, comments_cache):
 	"""Производит сравнение строк и возвращает True если критерии
 	удволетворены и False если нет"""
 
 	result = False
 
-	if not svod_row[SVOD_DATA["COMMENT"]].value:
+	if not svod_row[SVOD_DATA["COMMENT"]].value and not comments_cache[svod_row_num]:
 		"""(1) Проверяем, есть ли уже записанная деталь"""
 #		print("-->(1) Записи нет")
 
@@ -167,7 +168,7 @@ def compare_row(util_row, svod_row, svod_row_num, svod, util_cache):
 						"""Тип детали не КП, но совпала - записываем в КЭШ без типа"""
 						util_cache.append({"svod_row_num": svod_row_num, "type": 0})
 						result = True
-
+#	print("COMP RESULT --->"+str(result))
 	return result
 
 """******* РАБОТА С ДАТАМИ **********************"""
@@ -225,29 +226,37 @@ def analyse_files():
 	print("Записей в утилите: %s"%(util_rows - UTIL_ROW_START))
 	print("Записей в своде:   %s"%(svod_rows - SVOD_ROW_START))
 
+	"""В данном кэше сохраняется список совпадений детали для текущей итерации в утилите"""
 	util_cache = []
+
+	"""В данном кэше храниться история совпадений (наличие комментариев) в своде: 0-нет, 1-есть"""
+	comments_cache = [0]*svod_rows
 
 	"""Проводим проверку по всем строкам"""
 	for util_row_num in range(UTIL_ROW_START, util_rows):
 		print("Строка утилиты: %s"%(util_row_num+1), end=" --> ")
+		#Очистка кэша совпадений предыдущей итерации
 		del util_cache[:]
 		comp_result = False
 
 		for svod_row_num in range(SVOD_ROW_START, svod_rows):
 			try:
 				"""Проверка если запись совполает"""
-				comp_row_result = compare_row(util_sheet.row(util_row_num), svod_sheet.row(svod_row_num), svod_row_num, svod, util_cache)
+				comp_row_result = compare_row(util_sheet.row(util_row_num), svod_sheet.row(svod_row_num), \
+					svod_row_num, svod, util_cache, comments_cache)
 				
 				if comp_row_result:
 					comp_result = True
 			except Exception:
 				print("warnign: util-%s  svod-%s"%(util_row_num+1, svod_row_num))
-
+#		print("Util cache: "+str(util_cache))
 		print(str(comp_result))
 
 		if comp_result:
 			"""Если схождение - записываем результат в итоговую таблицу"""
 			write_row_number = check_util_cashe(util_cache)
+			#Ставим пометку в кэш совпадений
+			comments_cache[write_row_number] = 1
 			print("-->row_write: "+str(write_row_number))
 
 			"""Записываем наименование МЦ"""
@@ -265,6 +274,7 @@ def analyse_files():
 	"""Сохраняем результат"""
 	svod_result.save("%s\\result.xls"%(result_path))
 	print("Результат сохранен в %s"%(result_path))
+#	print("Карта совподения"+str(comments_cache))
 
 	""" ТЕСТЫ при разработке """
 #	res = compare_row(util_sheet.row(UTIL_ROW_START), \

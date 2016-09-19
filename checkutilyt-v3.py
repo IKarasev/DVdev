@@ -25,15 +25,17 @@ UTIL_DATA = {
 UTIL_ROW_START = 2
 
 SVOD_DATA = {
-	'VAGON_NUMBER': 3,
-	'IN_DATE': 6,
-	'PART_NUMBER': 8,
-	'TYPE': 7,
-	'WIDTH': 12,
-	'COMMENT': 25,
-	"GRADATION": 12,
-	'SCEP': 26,
-	'UTIL_ROW':27
+	'IN_VAGON_NUMBER': 2,
+	'OUT_VAGON_NUMBER': 19,
+	'IN_DATE': 1,
+	'IN_PART_NUMBER': 7,
+	'OUT_PART_NUMBER': 7,
+	'TYPE': 6,
+	'IN_RADATION': 10,
+	'OUT_RADATION': 17,
+	'IN_COMMENT': 20,
+	'OUT_COMMENT': 20,
+	'UTIL_ROW':22
 }
 
 SVOD_ROW_START = 3
@@ -54,7 +56,7 @@ SAVE_NAME = "result.xlx"
 UTIL_FILE = ""
 SVOD_FILE = ""
 
-
+MONTHS = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь']
 
 def main(argv):
 	"""Функция выполняемая при запуске скрипта"""

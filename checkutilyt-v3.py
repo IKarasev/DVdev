@@ -28,6 +28,7 @@ SVOD_DATA = {
 	'IN_VAGON_NUMBER': 2,
 	'OUT_VAGON_NUMBER': 19,
 	'IN_DATE': 4,
+	'OUT_DATE': 13,
 	'IN_PART_NUMBER': 7,
 	'OUT_PART_NUMBER': 14,
 	'TYPE': 6,
@@ -138,8 +139,69 @@ def int_from_str(str):
 		return -1
 
 """******* Процедура сравнения строк утилиты и 140 (свода) ******************************"""
-def compare_row(util_row, svod_row, svod_row_num, svod, util_cache, comments_cache):
+def compare_row(util_row, svod_row, svod_row_num, svod, util_cache, comments_cache, mode):
+	result = False
+	"""Проверяем режим сравнения - IN-приход, OUT-расход"""
+	if mode = "IN":
+		cache_mode = 0
+	elif mode == "OUT":
+		cache_mode = 1
+	else:
+		print("Нет такого [mode] для проверки")
+		sys.exit(2)
 
+	if not svod_row[SVOD_DATA[mode+"_COMMENT"]].value and not comments_cache[cache_mode][svod_row_num]:
+		"""(1) Проверяем, есть ли уже записанная деталь"""
+#		print("-->(1) Записи нет")
+
+		if util_row[UTIL_DATA['VAGON_NUMBER']].value == svod_row[SVOD_DATA['IN_VAGON_NUMBER']].value:
+			"""(2) Записи нет - проверяем номер вагона"""
+#			print("-->(2) Номер вагона совпал")
+
+			util_date = text_to_date(util_row[UTIL_DATA["IN_DATE"]].value)
+			svod_date = xl_to_date(svod_row[SVOD_DATA[mode+"_DATE"]].value,svod)
+			margin = datetime.timedelta(days = DATE_FRAME)
+
+			if (svod_date - margin).date() < util_date.date() < (svod_date + margin).date():
+				"""(3) Номер вагона совпал - проверяем дату"""
+#				print("-->(3) Дата совпала")
+				
+				if str(util_row[UTIL_DATA["PART_NUMBER"]].value):
+					"""(4) Дата совпала - проверяем наличие номера детали"""
+#					print("-->(4) Номер есть")
+
+					if str(util_row[UTIL_DATA["PART_NUMBER"]].value) == str(svod_row[SVOD_DATA[mode+"_PART_NUMBER"]].value):
+						"""(5) Номер детали есть - сравниваем"""
+#						print("-->(5) Номер совпал")
+
+						"""Номер детали совпал - записываем данные строку свода
+						и наличие номер детали в util_cache. Сразу возвращаем данные на запись"""
+						util_cache.append({"svod_row_num": svod_row_num, "type": 1})
+						return True
+
+				elif PART_TYPE[util_row[UTIL_DATA["TYPE"]].value] == svod_row[SVOD_DATA["TYPE"]].value:
+					"""(6) У утилиты нет номера детали. Сравниваем тип детали"""
+#					print("-->(6) Тип детали совпал")
+					
+					if util_row[UTIL_DATA["TYPE"]].value == "КП":
+						"""(7) Тип детали совпа. Проверяем это колесная пара?"""
+#						print("-->(7) Тип КП")
+						util_gradation = get_util_gradation(util_row)
+
+						if util_gradation[1] <= int_from_str(svod_row[SVOD_DATA[mode+"_GRADATION"]].value) <= util_gradation[0]:
+							"""(8) Тип детали является КП. Сравниваем Градацию"""
+#							print("-->(8) Градация совпала")
+							""" Градация совпала - записываем в КЭШ номер строки свода и градацию"""
+							util_cache.append({"svod_row_num": svod_row_num, "type": 2})
+							result = True
+						else:
+							"""Градация не совпала, записываем в КЭШ без типа"""
+							util_cache.append({"svod_row_num": svod_row_num, "type": 0})
+							result = True
+					else:
+						"""Тип детали не КП, но совпала - записываем в КЭШ без типа"""
+						util_cache.append({"svod_row_num": svod_row_num, "type": 0})
+						result = True
 	return result
 	
 """**********************************************"""
@@ -199,23 +261,27 @@ def analyse_files():
 	print("Записей в своде:   %s"%(svod_rows - SVOD_ROW_START))
 
 	"""В данном кэше сохраняется список совпадений детали для текущей итерации в утилите"""
-	util_cache = []
+	in_util_cache = []
+	out_util_cash = []
 
-	"""В данном кэше храниться история совпадений (наличие комментариев) в своде: 0-нет, 1-есть"""
-	comments_cache = [0]*svod_rows
+	"""В данном кэше храниться история совпадений (наличие комментариев) в своде: 0-нет, 1-есть, [0] - приход, [1] - расход"""
+	comments_cache = [[0]*svod_rows, [0]*svod_rows]
 
 	"""Проводим проверку по всем строкам"""
 	for util_row_num in range(UTIL_ROW_START, util_rows):
 		print("Строка утилиты: %s"%(util_row_num+1), end=" --> ")
 		#Очистка кэша совпадений предыдущей итерации
-		del util_cache[:]
+
+		del in_util_cache[:]
+		del out_util_cash[:]
+
 		comp_result = False
 
 		for svod_row_num in range(SVOD_ROW_START, svod_rows):
 			try:
 				"""Проверка если запись совполает"""
 				comp_row_result = compare_row(util_sheet.row(util_row_num), svod_sheet.row(svod_row_num), \
-					svod_row_num, svod, util_cache, comments_cache)
+					svod_row_num, svod, in_util_cache, comments_cache, "IN")
 				
 				if comp_row_result:
 					comp_result = True

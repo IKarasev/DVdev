@@ -27,18 +27,18 @@ UTIL_ROW_START = 2
 SVOD_DATA = {
 	'IN_VAGON_NUMBER': 2,
 	'OUT_VAGON_NUMBER': 19,
-	'IN_DATE': 1,
+	'IN_DATE': 4,
 	'IN_PART_NUMBER': 7,
-	'OUT_PART_NUMBER': 7,
+	'OUT_PART_NUMBER': 14,
 	'TYPE': 6,
 	'IN_RADATION': 10,
 	'OUT_RADATION': 17,
 	'IN_COMMENT': 20,
-	'OUT_COMMENT': 20,
+	'OUT_COMMENT': 21,
 	'UTIL_ROW':22
 }
 
-SVOD_ROW_START = 3
+SVOD_ROW_START = 1
 
 PART_TYPE = {
 	'КП': 'Колесная пара',
@@ -80,7 +80,7 @@ def main(argv):
 					'(по умолчанию - %s дней)\n'%(DATE_FRAME))
 				print('-s [--SAVE_RANGE] <num>   - число, период строк утилыты, через который будет производится сохранение результатов ' + \
 					'(по умолчанию - %s строк)\n'%(SAVE_RANGE))
-				print('-c [--SVOD_COMMENT] <num> - номер столбца таблицы свода (по умолчанию - %s)\n'%(SVOD_DATA["COMMENT"]))
+				print('-c [--SVOD_COMMENT] <num> - номер столбца таблицы свода (по умолчанию - %s)\n'%(SVOD_DATA["IN_COMMENT"]))
 				print('-n [--SAVE_NAME] <str>    - имя сохраняемого файла (по умолчанию - ' + SAVE_NAME + ')\n')
 				sys.exit(2)
 			elif opt in("-d","--DATE_FRAME"):
@@ -88,7 +88,9 @@ def main(argv):
 			elif opt in ("-s","--SAVE_RANGE"):
 				SAVE_RANGE = int(arg)
 			elif opt in ("-c","--SVOD_COMMENT"):
-				SVOD_DATA["COMMENT"] = int(arg) - 1
+				SVOD_DATA["IN_COMMENT"] = int(arg) - 1
+				SVOD_DATA["OUT_COMMENT"] = int(arg)
+				SVOD_DATA["UTIL_ROW"] = int(arg) + 1
 			elif opt in ("-n","--SAVE_NAME"):
 				SAVE_NAME = str(arg)
 	except Exception:
@@ -97,7 +99,7 @@ def main(argv):
 
 	print('--> SAVE RANGE:          %s rows'%(SAVE_RANGE))
 	print('--> DATE FRAME:          %s days'%(DATE_FRAME))
-	print('--> SVOD COMMENT COLUMN: %s'%(SVOD_DATA["COMMENT"]))
+	print('--> SVOD COMMENT COLUMN: %s'%(SVOD_DATA["IN_COMMENT"]))
 
 	"""Начало обработки"""
 	print("Сравнение открыто")
@@ -122,8 +124,8 @@ def get_util_gradation(util_row):
 	grad_str = str(util_row[UTIL_DATA["GRADATION"]].value)
 	if grad_str:
 		grad = grad_str.split("-")
-		grad[0] = int(grad[0])
-		grad[1] = int(grad[1])
+		grad[0] = int(grad[0]+"0")
+		grad[1] = int(grad[1]+"0")
 	else:
 		grad = [-5,-5]
 	return grad
@@ -135,67 +137,12 @@ def int_from_str(str):
 	else:
 		return -1
 
+"""******* Процедура сравнения строк утилиты и 140 (свода) ******************************"""
 def compare_row(util_row, svod_row, svod_row_num, svod, util_cache, comments_cache):
-	"""Производит сравнение строк и возвращает True если критерии
-	удволетворены и False если нет"""
 
-	result = False
-
-	if not svod_row[SVOD_DATA["COMMENT"]].value and not comments_cache[svod_row_num]:
-		"""(1) Проверяем, есть ли уже записанная деталь"""
-#		print("-->(1) Записи нет")
-
-		if util_row[UTIL_DATA['VAGON_NUMBER']].value == svod_row[SVOD_DATA['VAGON_NUMBER']].value:
-			"""(2) Записи нет - проверяем номер вагона"""
-#			print("-->(2) Номер вагона совпал")
-		
-			util_date = text_to_date(util_row[UTIL_DATA["IN_DATE"]].value)
-			svod_date = xl_to_date(svod_row[SVOD_DATA["IN_DATE"]].value,svod)
-			margin = datetime.timedelta(days = DATE_FRAME)
-
-			if (svod_date - margin).date() < util_date.date() < (svod_date + margin).date():
-				"""(3) Номер вагона совпал - проверяем дату"""
-#				print("-->(3) Дата совпала")
-
-				if str(util_row[UTIL_DATA["PART_NUMBER"]].value):
-					"""(4) Дата совпала - проверяем наличие номера детали"""
-#					print("-->(4) Номер есть")
-
-					if str(util_row[UTIL_DATA["PART_NUMBER"]].value) == str(svod_row[SVOD_DATA["PART_NUMBER"]].value):
-						"""(5) Номер детали есть - сравниваем"""
-#						print("-->(5) Номер совпал")
-
-						"""Номер детали совпал - записываем данные строку свода
-						и наличие номер детали в util_cache. Сразу возвращаем данные на запись"""
-						util_cache.append({"svod_row_num": svod_row_num, "type": 1})
-						return True
-
-				elif PART_TYPE[util_row[UTIL_DATA["TYPE"]].value] == svod_row[SVOD_DATA["TYPE"]].value:
-					"""(6) У утилиты нет номера детали. Сравниваем тип детали"""
-#					print("-->(6) Тип детали совпал")
-
-					if util_row[UTIL_DATA["TYPE"]].value == "КП":
-						"""(7) Тип детали совпа. Проверяем это колесная пара?"""
-#						print("-->(7) Тип КП")
-						util_gradation = get_util_gradation(util_row)
-
-						if util_gradation[1] <= int_from_str(svod_row[SVOD_DATA["GRADATION"]].value) <= util_gradation[0]:
-							"""(8) Тип детали является КП. Сравниваем Градацию"""
-#							print("-->(8) Градация совпала")
-							""" Градация совпала - записываем в КЭШ номер строки свода и градацию"""
-							util_cache.append({"svod_row_num": svod_row_num, "type": 2})
-							result = True
-						else:
-							"""Градация не совпала, записываем в КЭШ без типа"""
-							util_cache.append({"svod_row_num": svod_row_num, "type": 0})
-							result = True
-					else:
-						"""Тип детали не КП, но совпала - записываем в КЭШ без типа"""
-						util_cache.append({"svod_row_num": svod_row_num, "type": 0})
-						result = True
-#	print("COMP RESULT --->"+str(result))
 	return result
-
+	
+"""**********************************************"""
 """******* РАБОТА С ДАТАМИ **********************"""
 
 def xl_to_date(cell_value,wb):

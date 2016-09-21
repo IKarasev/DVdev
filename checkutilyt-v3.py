@@ -26,33 +26,33 @@ UTIL_ROW_START = 2
 
 SVOD_DATA = {
 	'IN_VAGON_NUMBER': 2,
-	'OUT_VAGON_NUMBER': 19,
+	'OUT_VAGON_NUMBER': 12,
 	'IN_DATE': 4,
 	'OUT_DATE': 13,
 	'IN_PART_NUMBER': 7,
 	'OUT_PART_NUMBER': 14,
 	'TYPE': 6,
-	'IN_RADATION': 10,
-	'OUT_RADATION': 17,
+	'IN_GRADATION': 10,
+	'OUT_GRADATION': 17,
 	'IN_COMMENT': 20,
 	'OUT_COMMENT': 21,
-	'UTIL_ROW':22
+	'UTIL_ROW':22,
+	'SCEP': 23,
 }
 
 SVOD_ROW_START = 1
 
-PART_TYPE = {
-	'КП': 'Колесная пара',
-	'БР': 'Боковая рама',
-	'НБ': 'Надрессорная балка',
-
-}
+# PART_TYPE = {
+# 	'КП': 'Колесная пара',
+# 	'БР': 'Боковая рама',
+# 	'НБ': 'Надрессорная балка'
+# }
 
 DATE_FRAME = 3
 
 SAVE_RANGE = 500
 
-SAVE_NAME = "result.xlx"
+SAVE_NAME = "result.xls"
 
 UTIL_FILE = ""
 SVOD_FILE = ""
@@ -92,6 +92,7 @@ def main(argv):
 				SVOD_DATA["IN_COMMENT"] = int(arg) - 1
 				SVOD_DATA["OUT_COMMENT"] = int(arg)
 				SVOD_DATA["UTIL_ROW"] = int(arg) + 1
+				SVOD_DATA['SCEP'] = int(arg) + 2
 			elif opt in ("-n","--SAVE_NAME"):
 				SAVE_NAME = str(arg)
 	except Exception:
@@ -133,7 +134,7 @@ def get_util_gradation(util_row):
 
 """Function to get int from string"""
 def int_from_str(str):
-	if not str:
+	if str:
 		return int(str)
 	else:
 		return -1
@@ -141,8 +142,9 @@ def int_from_str(str):
 """******* Процедура сравнения строк утилиты и 140 (свода) ******************************"""
 def compare_row(util_row, svod_row, svod_row_num, svod, util_cache, comments_cache, mode):
 	result = False
+
 	"""Проверяем режим сравнения - IN-приход, OUT-расход"""
-	if mode = "IN":
+	if mode == "IN":
 		cache_mode = 0
 	elif mode == "OUT":
 		cache_mode = 1
@@ -150,9 +152,9 @@ def compare_row(util_row, svod_row, svod_row_num, svod, util_cache, comments_cac
 		print("Нет такого [mode] для проверки")
 		sys.exit(2)
 
-	if not svod_row[SVOD_DATA[mode+"_COMMENT"]].value and not comments_cache[cache_mode][svod_row_num]:
+	if SVOD_DATA[mode+"_COMMENT"] > len(svod_row) or not comments_cache[cache_mode][svod_row_num]:
 		"""(1) Проверяем, есть ли уже записанная деталь"""
-#		print("-->(1) Записи нет")
+#		print("  -->(1) Записи нет")
 
 		if util_row[UTIL_DATA['VAGON_NUMBER']].value == svod_row[SVOD_DATA['IN_VAGON_NUMBER']].value:
 			"""(2) Записи нет - проверяем номер вагона"""
@@ -179,7 +181,7 @@ def compare_row(util_row, svod_row, svod_row_num, svod, util_cache, comments_cac
 						util_cache.append({"svod_row_num": svod_row_num, "type": 1})
 						return True
 
-				elif PART_TYPE[util_row[UTIL_DATA["TYPE"]].value] == svod_row[SVOD_DATA["TYPE"]].value:
+				elif util_row[UTIL_DATA["TYPE"]].value == svod_row[SVOD_DATA["TYPE"]].value:
 					"""(6) У утилиты нет номера детали. Сравниваем тип детали"""
 #					print("-->(6) Тип детали совпал")
 					
@@ -188,7 +190,7 @@ def compare_row(util_row, svod_row, svod_row_num, svod, util_cache, comments_cac
 #						print("-->(7) Тип КП")
 						util_gradation = get_util_gradation(util_row)
 
-						if util_gradation[1] <= int_from_str(svod_row[SVOD_DATA[mode+"_GRADATION"]].value) <= util_gradation[0]:
+						if util_gradation[0] >= int_from_str(svod_row[SVOD_DATA[mode+"_GRADATION"]].value) >= util_gradation[1]:
 							"""(8) Тип детали является КП. Сравниваем Градацию"""
 #							print("-->(8) Градация совпала")
 							""" Градация совпала - записываем в КЭШ номер строки свода и градацию"""
@@ -262,7 +264,7 @@ def analyse_files():
 
 	"""В данном кэше сохраняется список совпадений детали для текущей итерации в утилите"""
 	in_util_cache = []
-	out_util_cash = []
+	out_util_cache = []
 
 	"""В данном кэше храниться история совпадений (наличие комментариев) в своде: 0-нет, 1-есть, [0] - приход, [1] - расход"""
 	comments_cache = [[0]*svod_rows, [0]*svod_rows]
@@ -273,36 +275,69 @@ def analyse_files():
 		#Очистка кэша совпадений предыдущей итерации
 
 		del in_util_cache[:]
-		del out_util_cash[:]
+		del out_util_cache[:]
 
-		comp_result = False
+		in_comp_result = False
+		out_comp_result = False
 
 		for svod_row_num in range(SVOD_ROW_START, svod_rows):
 			try:
-				"""Проверка если запись совполает"""
-				comp_row_result = compare_row(util_sheet.row(util_row_num), svod_sheet.row(svod_row_num), \
+				"""Проверка если запись совполает c приходом"""
+				in_comp_row_result = compare_row(util_sheet.row(util_row_num), svod_sheet.row(svod_row_num), \
 					svod_row_num, svod, in_util_cache, comments_cache, "IN")
 				
-				if comp_row_result:
-					comp_result = True
+				if in_comp_row_result:
+					in_comp_result = True
 			except Exception:
-				print("warnign: util-%s  svod-%s"%(util_row_num+1, svod_row_num+1))
-#		print("Util cache: "+str(util_cache))
-		print(str(comp_result))
+				print("warnign (IN): util-%s  svod-%s"%(util_row_num+1, svod_row_num+1))
 
-		if comp_result:
+			# try:
+			# 	"""Проверка если запись совполает c расходом"""
+			# 	out_comp_row_result = compare_row(util_sheet.row(util_row_num), svod_sheet.row(svod_row_num), \
+			# 		svod_row_num, svod, out_util_cache, comments_cache, "OUT")
+				
+			# 	if out_comp_row_result:
+			# 		out_comp_result = True
+			# except Exception:
+			# 	print("warnign (IN): util-%s  svod-%s"%(util_row_num+1, svod_row_num+1))
+
+		"""Записываем данные схождения"""
+		if in_comp_result:
+
+			print(str(in_comp_result)+" IN")
+
 			"""Если схождение - записываем результат в итоговую таблицу"""
-			write_row_number = check_util_cashe(util_cache)
+			write_row_number = check_util_cashe(in_util_cache)
 			#Ставим пометку в кэш совпадений
-			comments_cache[write_row_number] = 1
+			comments_cache[0][write_row_number] = 1
 #			print("-->row_write: "+str(write_row_number))
 
 			"""Записываем наименование МЦ"""
-			svod_result_sheet.write(write_row_number, SVOD_DATA["COMMENT"], util_sheet.cell(util_row_num,UTIL_DATA["NAME_MC"]).value)
+			svod_result_sheet.write(write_row_number, SVOD_DATA["IN_COMMENT"], util_sheet.cell(util_row_num,UTIL_DATA["NAME_MC"]).value)
 			"""Записываем сцеп"""
 			svod_result_sheet.write(write_row_number, SVOD_DATA["SCEP"], util_sheet.cell(util_row_num,UTIL_DATA["SCEP"]).value)
 			"""Записываем соотвествующую строку утилиты"""
 			svod_result_sheet.write(write_row_number, SVOD_DATA["UTIL_ROW"], str(util_row_num+1))
+		
+		elif out_comp_result:
+
+			print(str(out_comp_result)+" OUT")
+
+			"""Если схождение - записываем результат в итоговую таблицу"""
+			write_row_number = check_util_cashe(out_util_cache)
+			#Ставим пометку в кэш совпадений
+			comments_cache[1][write_row_number] = 1
+#			print("-->row_write: "+str(write_row_number))
+
+			"""Записываем наименование МЦ"""
+			svod_result_sheet.write(write_row_number, SVOD_DATA["OUT_COMMENT"], util_sheet.cell(util_row_num,UTIL_DATA["NAME_MC"]).value)
+			"""Записываем сцеп"""
+			svod_result_sheet.write(write_row_number, SVOD_DATA["SCEP"], util_sheet.cell(util_row_num,UTIL_DATA["SCEP"]).value)
+			"""Записываем соотвествующую строку утилиты"""
+			svod_result_sheet.write(write_row_number, SVOD_DATA["UTIL_ROW"], str(util_row_num+1))
+
+		else:
+			print("False")
 
 		if not util_row_num%SAVE_RANGE:
 			"""Сохраняем каждые SAVE_RANGE строк"""

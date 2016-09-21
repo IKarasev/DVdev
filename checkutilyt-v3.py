@@ -35,9 +35,11 @@ SVOD_DATA = {
 	'IN_GRADATION': 10,
 	'OUT_GRADATION': 17,
 	'IN_COMMENT': 20,
-	'OUT_COMMENT': 21,
-	'UTIL_ROW':22,
-	'SCEP': 23,
+	'IN_SCEP': 21,
+	'IN_UTIL_ROW':22,
+	'OUT_COMMENT': 23,
+	'OUT_SCEP': 24,
+	'OUT_UTIL_ROW':25
 }
 
 SVOD_ROW_START = 1
@@ -84,15 +86,21 @@ def main(argv):
 				print('-c [--SVOD_COMMENT] <num> - номер столбца таблицы свода (по умолчанию - %s)\n'%(SVOD_DATA["IN_COMMENT"]))
 				print('-n [--SAVE_NAME] <str>    - имя сохраняемого файла (по умолчанию - ' + SAVE_NAME + ')\n')
 				sys.exit(2)
+
 			elif opt in("-d","--DATE_FRAME"):
 				DATE_FRAME = int(arg)
+
 			elif opt in ("-s","--SAVE_RANGE"):
 				SAVE_RANGE = int(arg)
+
 			elif opt in ("-c","--SVOD_COMMENT"):
 				SVOD_DATA["IN_COMMENT"] = int(arg) - 1
-				SVOD_DATA["OUT_COMMENT"] = int(arg)
-				SVOD_DATA["UTIL_ROW"] = int(arg) + 1
-				SVOD_DATA['SCEP'] = int(arg) + 2
+				SVOD_DATA["IN_SCEP"] = int(arg)
+				SVOD_DATA["IN_UTIL_ROW"] = int(arg) + 1
+				SVOD_DATA['OUT_COMMENT'] = int(arg) + 2
+				SVOD_DATA['OUT_SCEP'] = int(arg) + 3
+				SVOD_DATA['OUT_UTIL_ROW'] = int(arg) + 4
+
 			elif opt in ("-n","--SAVE_NAME"):
 				SAVE_NAME = str(arg)
 	except Exception:
@@ -152,10 +160,10 @@ def compare_row(util_row, svod_row, svod_row_num, svod, util_cache, comments_cac
 		print("Нет такого [mode] для проверки")
 		sys.exit(2)
 
-	if SVOD_DATA[mode+"_COMMENT"] > len(svod_row) or not comments_cache[cache_mode][svod_row_num]:
+	if not comments_cache[cache_mode][svod_row_num]:
 		"""(1) Проверяем, есть ли уже записанная деталь"""
-#		print("  -->(1) Записи нет")
-
+#		print("   -->(1) Записи нет")
+		
 		if util_row[UTIL_DATA['VAGON_NUMBER']].value == svod_row[SVOD_DATA['IN_VAGON_NUMBER']].value:
 			"""(2) Записи нет - проверяем номер вагона"""
 #			print("-->(2) Номер вагона совпал")
@@ -271,7 +279,7 @@ def analyse_files():
 
 	"""Проводим проверку по всем строкам"""
 	for util_row_num in range(UTIL_ROW_START, util_rows):
-		print("Строка утилиты: %s"%(util_row_num+1), end=" --> ")
+		print("Строка утилиты: %s"%(util_row_num+1), end = " --> ")
 		#Очистка кэша совпадений предыдущей итерации
 
 		del in_util_cache[:]
@@ -291,15 +299,15 @@ def analyse_files():
 			except Exception:
 				print("warnign (IN): util-%s  svod-%s"%(util_row_num+1, svod_row_num+1))
 
-			# try:
-			# 	"""Проверка если запись совполает c расходом"""
-			# 	out_comp_row_result = compare_row(util_sheet.row(util_row_num), svod_sheet.row(svod_row_num), \
-			# 		svod_row_num, svod, out_util_cache, comments_cache, "OUT")
+			try:
+				"""Проверка если запись совполает c расходом"""
+				out_comp_row_result = compare_row(util_sheet.row(util_row_num), svod_sheet.row(svod_row_num), \
+					svod_row_num, svod, out_util_cache, comments_cache, "OUT")
 				
-			# 	if out_comp_row_result:
-			# 		out_comp_result = True
-			# except Exception:
-			# 	print("warnign (IN): util-%s  svod-%s"%(util_row_num+1, svod_row_num+1))
+				if out_comp_row_result:
+					out_comp_result = True
+			except Exception:
+				print("warnign (IN): util-%s  svod-%s"%(util_row_num+1, svod_row_num+1))
 
 		"""Записываем данные схождения"""
 		if in_comp_result:
@@ -315,9 +323,9 @@ def analyse_files():
 			"""Записываем наименование МЦ"""
 			svod_result_sheet.write(write_row_number, SVOD_DATA["IN_COMMENT"], util_sheet.cell(util_row_num,UTIL_DATA["NAME_MC"]).value)
 			"""Записываем сцеп"""
-			svod_result_sheet.write(write_row_number, SVOD_DATA["SCEP"], util_sheet.cell(util_row_num,UTIL_DATA["SCEP"]).value)
+			svod_result_sheet.write(write_row_number, SVOD_DATA["IN_SCEP"], util_sheet.cell(util_row_num,UTIL_DATA["SCEP"]).value)
 			"""Записываем соотвествующую строку утилиты"""
-			svod_result_sheet.write(write_row_number, SVOD_DATA["UTIL_ROW"], str(util_row_num+1))
+			svod_result_sheet.write(write_row_number, SVOD_DATA["IN_UTIL_ROW"], str(util_row_num+1))
 		
 		elif out_comp_result:
 
@@ -325,6 +333,7 @@ def analyse_files():
 
 			"""Если схождение - записываем результат в итоговую таблицу"""
 			write_row_number = check_util_cashe(out_util_cache)
+			
 			#Ставим пометку в кэш совпадений
 			comments_cache[1][write_row_number] = 1
 #			print("-->row_write: "+str(write_row_number))
@@ -332,9 +341,9 @@ def analyse_files():
 			"""Записываем наименование МЦ"""
 			svod_result_sheet.write(write_row_number, SVOD_DATA["OUT_COMMENT"], util_sheet.cell(util_row_num,UTIL_DATA["NAME_MC"]).value)
 			"""Записываем сцеп"""
-			svod_result_sheet.write(write_row_number, SVOD_DATA["SCEP"], util_sheet.cell(util_row_num,UTIL_DATA["SCEP"]).value)
+			svod_result_sheet.write(write_row_number, SVOD_DATA["OUT_SCEP"], util_sheet.cell(util_row_num,UTIL_DATA["SCEP"]).value)
 			"""Записываем соотвествующую строку утилиты"""
-			svod_result_sheet.write(write_row_number, SVOD_DATA["UTIL_ROW"], str(util_row_num+1))
+			svod_result_sheet.write(write_row_number, SVOD_DATA["OUT_UTIL_ROW"], str(util_row_num+1))
 
 		else:
 			print("False")
